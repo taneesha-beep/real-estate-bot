@@ -109,3 +109,7 @@ DEBUG=True
 
 ```
 
+## Deployment
+
+Frontend includes vercel.json for optional Vercel deployment.
+Backend can be deployed on any Django-compatible host.
