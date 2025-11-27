@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## Real Estate Bot (Django + React) 
 
 ## Overview
@@ -113,3 +114,7 @@ DEBUG=True
 
 Frontend includes vercel.json for optional Vercel deployment.
 Backend can be deployed on any Django-compatible host.
+=======
+# realestate_bot
+
+>>>>>>> c636362 (Initial commit)

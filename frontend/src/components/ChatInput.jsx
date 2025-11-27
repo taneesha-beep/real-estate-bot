@@ -87,4 +87,8 @@ export default function ChatInput({ onSubmit, loading }) {
       </button>
     </form>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> c636362 (Initial commit)

@@ -37,4 +37,8 @@ export const downloadData = async (query, file = null, format = "excel") => {
   document.body.appendChild(link);
   link.click();
   link.remove();
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> c636362 (Initial commit)
