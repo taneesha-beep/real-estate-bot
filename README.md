@@ -99,18 +99,13 @@ Frontend runs at:
 
 ## **Environment Variables**
 
-Backend uses a `.env` file (already present).
+Backend uses a `.env` file.
 Update values such as:
 
 ```
-SECRET_KEY=your_key
+
+SECRET_KEY=django-insecure-replace-me-in-prod
 DEBUG=True
+
 ```
-
----
-
-## **Deployment**
-
-Frontend includes `vercel.json` for optional Vercel deployment.
-Backend can be deployed on any Django-compatible host.
 
