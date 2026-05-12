@@ -1,4 +1,8 @@
 .env
+*.env
+.DS_Store
+REPORT.docx
+realestate.mp4
 # Logs
 logs
 *.log
