@@ -32,13 +32,9 @@ export const downloadData = async (query, file = null, format = "excel") => {
   link.href = url;
   link.setAttribute(
     "download",
-    format === "csv" ? "real_estate_data.csv" : "real_estate_data.xlsx"
+    format === "csv" ? "real_estate_data.csv" : "real_estate_data.xlsx",
   );
   document.body.appendChild(link);
   link.click();
   link.remove();
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> c636362 (Initial commit)
