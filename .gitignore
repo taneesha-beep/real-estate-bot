@@ -2,3 +2,27 @@
 .env
 REPORT.docx
 realestate.mp4
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.sqlite3
+db.sqlite3
+
+# Node
+node_modules/
+dist/
+build/
+
+# Env
+.env
+*.env
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Media
+*.mp4
