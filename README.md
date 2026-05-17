@@ -1,13 +1,12 @@
-<<<<<<< HEAD
-## Real Estate Bot (Django + React) 
+## Real Estate Bot (Django + React)
 
 ## Overview
 
 This project is a **Real Estate Analysis Bot** with:
 
-* A **Django backend** (API + data processing)
-* A **React frontend** (user interface)
-* Tools to upload Excel data, run property analysis, and display results.
+- A **Django backend** (API + data processing)
+- A **React frontend** (user interface)
+- Tools to upload Excel data, run property analysis, and display results.
 
 ---
 
@@ -36,14 +35,14 @@ realestate_bot_green 2/
 
 ### **Backend**
 
-* Python + Django
-* Django REST Framework
-* SQLite (default)
+- Python + Django
+- Django REST Framework
+- SQLite (default)
 
 ### **Frontend**
 
-* React (Vite)
-* Axios
+- React (Vite)
+- Axios
 
 ---
 
@@ -90,11 +89,11 @@ Frontend runs at:
 
 ## **Features**
 
-* Upload property data (Excel)
-* Analyze and compare real estate information
-* View results in the frontend
-* Simple UI built using React
-* API-driven backend for clean separation
+- Upload property data (Excel)
+- Analyze and compare real estate information
+- View results in the frontend
+- Simple UI built using React
+- API-driven backend for clean separation
 
 ---
 
@@ -114,7 +113,3 @@ DEBUG=True
 
 Frontend includes vercel.json for optional Vercel deployment.
 Backend can be deployed on any Django-compatible host.
-=======
-# realestate_bot
-
->>>>>>> c636362 (Initial commit)
