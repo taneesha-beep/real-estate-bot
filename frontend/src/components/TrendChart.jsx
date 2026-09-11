@@ -9,13 +9,30 @@ import {
   ResponsiveContainer
 } from "recharts";
 
-const COLORS = ['#899878', '#222725', '#e4e6c3', '#121113', '#f7f7f2'];
+// Earthy series colors in a fixed order; each is >= 3:1 on the white card and
+// adjacent pairs stay distinguishable with common color-vision deficiencies.
+const COLORS = ['#5f8a2c', '#2f78a8', '#c4572a', '#8e4a9a', '#b88a00'];
 
 export default function TrendChart({ title, data }) {
   if (!data) return null;
 
-  const labels = data.labels;
-  const datasets = data.datasets;
+  const labels = data.labels ?? [];
+  const datasets = data.datasets ?? [];
+  // Missing years arrive as null and are drawn as gaps; an all-null chart is empty.
+  const hasValues = datasets.some((ds) => ds.values.some((v) => v != null));
+
+  if (!hasValues) {
+    return (
+      <div className="card mt-4 chart-card">
+        <div className="card-body">
+          <div className="chart-header">
+            <h2 className="card-title">{title}</h2>
+          </div>
+          <p className="table-info mb-0">No data available to chart for this query.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Convert to Recharts format
   const chartData = labels.map((year, i) => {
@@ -27,16 +44,16 @@ export default function TrendChart({ title, data }) {
   });
 
   return (
-    <div className="card mt-4 shadow-sm chart-card">
+    <div className="card mt-4 chart-card">
       <div className="card-body">
         <div className="chart-header">
-          <h5 className="card-title">{title}</h5>
+          <h2 className="card-title">{title}</h2>
         </div>
         
         <div className="chart-wrapper">
           <ResponsiveContainer width="100%" height={350}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(137, 152, 120, 0.2)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e6eb" />
               <XAxis 
                 dataKey="year" 
                 stroke="#222725"
@@ -48,10 +65,10 @@ export default function TrendChart({ title, data }) {
               />
               <Tooltip 
                 contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: '2px solid #899878',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #cbd2da',
+                  borderRadius: '4px',
+                  boxShadow: 'none'
                 }}
                 labelStyle={{ color: '#121113', fontWeight: 600 }}
               />
@@ -68,7 +85,8 @@ export default function TrendChart({ title, data }) {
                   type="monotone"
                   dataKey={ds.area}
                   stroke={COLORS[index % COLORS.length]}
-                  strokeWidth={3}
+                  strokeWidth={2}
+                  isAnimationActive={false}
                   dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
                   activeDot={{ r: 6, strokeWidth: 2 }}
                 />

@@ -1,7 +1,10 @@
-Django==4.2.7
-djangorestframework==3.14.0
-django-cors-headers==4.3.1
+Django>=5.2,<5.3
+djangorestframework>=3.16,<3.17
+django-cors-headers>=4.7,<5
 pandas==2.1.3
 openpyxl==3.1.2
 openai==1.51.0
+httpx==0.27.2  # openai 1.51.0 breaks with httpx>=0.28 (removed "proxies" argument)
 python-dotenv==1.0.0
+gunicorn>=25,<26
+whitenoise>=6.12,<7

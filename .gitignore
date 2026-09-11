@@ -26,3 +26,5 @@ build/
 
 # Media
 *.mp4
+.claude/
+WORKPLAN.md
