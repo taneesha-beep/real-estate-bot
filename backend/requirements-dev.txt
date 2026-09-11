@@ -1,0 +1,3 @@
+-r requirements.txt
+pytest==9.1.1
+pytest-django==4.12.0  # last release supporting Django 4.2 (4.13.0 requires Django>=5.2)
