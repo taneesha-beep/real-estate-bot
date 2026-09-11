@@ -40,12 +40,10 @@ function App() {
   return (
     <div className="app-wrapper">
       <div className="container my-4">
-        {/* Header with modern design */}
+        {/* Header */}
         <header className="app-header">
-          <h1>
-            <span className="emoji">🏘️</span> Real Estate Analysis
-          </h1>
-          <p className="subtitle">Intelligent insights for smart investments</p>
+          <h1>Real Estate Analysis</h1>
+          <p className="subtitle">Explore price and demand trends by area.</p>
         </header>
 
         {/* Input Section */}
@@ -53,7 +51,7 @@ function App() {
 
         {/* Loading State */}
         {loading && (
-          <div className="loading-container">
+          <div className="loading-container" role="status" aria-live="polite">
             <div className="spinner"></div>
             <p className="loading-text">Analyzing real estate data...</p>
           </div>
@@ -86,12 +84,12 @@ function App() {
 
             <div className="charts-grid">
               <TrendChart
-                title="💰 Price Trend Analysis"
+                title="Price trends"
                 data={result.chart.price_trend}
               />
 
               <TrendChart
-                title="📊 Demand Trend Analysis"
+                title="Demand trends"
                 data={result.chart.demand_trend}
               />
             </div>
@@ -105,7 +103,7 @@ function App() {
 
         {/* Footer */}
         <footer className="app-footer">
-          <p>Built with React & Django • OpenAI optional • By Taneesha Badhe</p>
+          <p>Real Estate Analysis · Taneesha Badhe</p>
         </footer>
       </div>
     </div>

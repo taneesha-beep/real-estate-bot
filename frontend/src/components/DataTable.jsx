@@ -1,7 +1,7 @@
 export default function DataTable({ rows, onDownload }) {
   if (!rows || rows.length === 0) {
     return (
-      <div className="card mt-4 shadow-sm data-table-card">
+      <div className="card mt-4 data-table-card">
         <div className="card-body">
           <p className="table-info mb-0">No rows match this query.</p>
         </div>
@@ -12,12 +12,11 @@ export default function DataTable({ rows, onDownload }) {
   const columns = Object.keys(rows[0]);
 
   return (
-    <div className="card mt-4 shadow-sm data-table-card">
+    <div className="card mt-4 data-table-card">
       <div className="card-body">
         <div className="table-header">
           <div className="table-title-section">
-            <span className="table-icon">📋</span>
-            <h5 className="card-title mb-0">Data Overview</h5>
+            <h2 className="card-title mb-0">Data overview</h2>
             <span className="record-count">{rows.length} records</span>
           </div>
           
@@ -27,7 +26,6 @@ export default function DataTable({ rows, onDownload }) {
               onClick={() => onDownload("excel")}
               title="Download as Excel"
             >
-              <span className="btn-icon">📊</span>
               Excel
             </button>
             <button
@@ -35,20 +33,19 @@ export default function DataTable({ rows, onDownload }) {
               onClick={() => onDownload("csv")}
               title="Download as CSV"
             >
-              <span className="btn-icon">📄</span>
               CSV
             </button>
           </div>
         </div>
 
-        <div className="table-responsive">
-          <table className="table table-striped table-bordered custom-table">
+        <div className="table-responsive" tabIndex={0} role="region" aria-label="Query results">
+          <table className="table table-striped custom-table">
             <thead>
               <tr>
                 {columns.map((c) => (
                   <th key={c}>
                     <div className="th-content">
-                      {c.toUpperCase()}
+                      {c.replaceAll("_", " ")}
                     </div>
                   </th>
                 ))}
@@ -70,7 +67,7 @@ export default function DataTable({ rows, onDownload }) {
 
         <div className="table-footer">
           <p className="table-info">
-            💡 Tip: Click excel or csv button to export this data
+            Export these results as an Excel or CSV file.
           </p>
         </div>
       </div>
