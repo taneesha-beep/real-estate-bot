@@ -10,11 +10,15 @@ from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
-# Columns we expect in the Excel (adjust to your actual file).
-# For the sample file, assume columns: 'year', 'area', 'price', 'demand', 'size'.
+# Canonical columns required after header mapping (see read_excel_from_filelike),
+# in the order used for downloads.
 EXPECTED_COLUMNS = ["year", "area", "price", "demand", "size"]
 
 _client = None
+
+
+class SpreadsheetError(ValueError):
+    """A problem with the sheet's layout that the user can fix; the message is user-facing."""
 
 
 def get_openai_client():
@@ -30,14 +34,17 @@ def get_openai_client():
         return _client
     if not os.getenv("OPENAI_API_KEY"):
         return None
-    _client = OpenAI()
+    # Fail fast so a slow or unreachable API falls back instead of hanging
+    # the request (the SDK default is a 600 s timeout with 2 retries).
+    _client = OpenAI(timeout=15, max_retries=1)
     return _client
 
 
 def read_excel_from_filelike(file_like):
     df = pd.read_excel(file_like, engine="openpyxl")
 
-    df.columns = [c.strip().lower() for c in df.columns]
+    # str() first: header cells can be numbers (e.g. a year used as a header).
+    df.columns = [str(c).strip().lower() for c in df.columns]
 
     # Map source spreadsheet headers to the names the app expects.
     column_map = {
@@ -50,6 +57,23 @@ def read_excel_from_filelike(file_like):
 
     df.rename(columns=column_map, inplace=True)
 
+    # e.g. both "Final Location" and "area": df["area"] would be ambiguous.
+    duplicated = sorted(set(df.columns[df.columns.duplicated()]) & set(EXPECTED_COLUMNS))
+    if duplicated:
+        raise SpreadsheetError(
+            "Duplicate columns after header mapping: "
+            + ", ".join(duplicated)
+            + ". Keep only one column for each."
+        )
+
+    if "area" in df.columns:
+        # Uploaded area cells can be numbers or carry stray spaces; use trimmed
+        # strings, and treat blank cells as missing (an empty name would
+        # otherwise match every query).
+        df["area"] = df["area"].map(
+            lambda v: (str(v).strip() or None) if pd.notna(v) else None
+        )
+
     return df
 
 
@@ -61,23 +85,18 @@ def extract_areas_from_query(query: str, available_areas: List[str]) -> List[str
     - Matches any available area name contained in the query (case-insensitive).
     - Handles phrasings like "compare A and B" or "A vs B" implicitly, since
       each area is checked independently.
-    - If nothing matches, falls back to the last word-like token in the query.
+    - Returns areas in the order they are first mentioned in the query.
+    - If nothing matches, returns an empty list (the caller reports the
+      available areas instead of guessing one).
     """
     q = query.lower()
-    found = []
+    positions = {}
     for area in available_areas:
-        if area.lower() in q:
-            found.append(area)
+        pos = q.find(area.lower())
+        if pos != -1:
+            positions[area] = pos
 
-    if not found:
-        tokens = re.findall(r"[A-Za-z0-9\s\-]+", query)
-        candidate_words = [
-            t.strip() for t in " ".join(tokens).split() if len(t.strip()) > 2
-        ]
-        if candidate_words:
-            return [candidate_words[-1]]
-
-    return list(dict.fromkeys(found))  # unique, order-preserving
+    return sorted(positions, key=positions.get)
 
 
 def prepare_chart_data(df: pd.DataFrame, areas: List[str]) -> Dict[str, Any]:
@@ -88,6 +107,8 @@ def prepare_chart_data(df: pd.DataFrame, areas: List[str]) -> Dict[str, Any]:
       "price_trend":  {"labels": [...years...], "datasets": [{"area": "X", "values": [...]}, ...]},
       "demand_trend": {...},
     }
+
+    Each values list has one entry per label; years with no data are None.
     """
     chart: Dict[str, Any] = {"price_trend": {}, "demand_trend": {}}
 
@@ -101,18 +122,22 @@ def prepare_chart_data(df: pd.DataFrame, areas: List[str]) -> Dict[str, Any]:
     price_datasets = []
     demand_datasets = []
     for area in areas:
-        sub = df[df["area"].str.lower() == area.lower()]
+        sub = df[df["area"].str.lower() == area.lower()].copy()
+        # Uploaded sheets may hold text in numeric columns; treat it as missing.
+        sub["price"] = pd.to_numeric(sub["price"], errors="coerce")
+        sub["demand"] = pd.to_numeric(sub["demand"], errors="coerce")
         grouped = (
             sub.groupby("year")
             .agg({"price": "mean", "demand": "mean"})
             .reindex(years_sorted)
-            .fillna(0)
         )
+        # Years without data stay None (JSON null) so the chart shows a gap
+        # instead of a misleading drop to 0.
         price_values = [
-            float(x) if not pd.isna(x) else 0.0 for x in grouped["price"].tolist()
+            float(x) if not pd.isna(x) else None for x in grouped["price"].tolist()
         ]
         demand_values = [
-            float(x) if not pd.isna(x) else 0.0 for x in grouped["demand"].tolist()
+            float(x) if not pd.isna(x) else None for x in grouped["demand"].tolist()
         ]
         price_datasets.append({"area": area, "values": price_values})
         demand_datasets.append({"area": area, "values": demand_values})
@@ -160,8 +185,10 @@ def prepare_table_data(
 def parse_query_with_llm(query: str, available_areas: List[str]) -> Dict[str, Any]:
     """
     Use the LLM to extract areas, intent, and metrics from a natural-language
-    query. Raises if no client is configured or the response isn't valid JSON;
-    callers are expected to fall back to extract_areas_from_query.
+    query. Areas are mapped onto the canonical names in available_areas and
+    unknown ones are dropped. Raises if no client is configured, the response
+    isn't a JSON object, or no known area remains; callers are expected to fall
+    back to extract_areas_from_query.
     """
     client = get_openai_client()
     if client is None:
@@ -196,8 +223,38 @@ Output:
         temperature=0,
     )
 
-    content = response.choices[0].message.content.strip()
-    return json.loads(content)
+    content = (response.choices[0].message.content or "").strip()
+    # Chat models often wrap JSON in a ```json ... ``` fence.
+    fenced = re.match(r"^```[a-zA-Z]*\s*(.*?)\s*```$", content, re.DOTALL)
+    if fenced:
+        content = fenced.group(1)
+    parsed = json.loads(content)
+    if not isinstance(parsed, dict):
+        raise ValueError(f"LLM returned {type(parsed).__name__}, expected an object")
+
+    # Keep only areas that exist in the data, spelled as they are in the data.
+    canonical = {a.lower(): a for a in available_areas}
+    raw_areas = parsed.get("areas")
+    if isinstance(raw_areas, str):
+        raw_areas = [raw_areas]
+    areas = []
+    for name in raw_areas if isinstance(raw_areas, list) else []:
+        match = canonical.get(str(name).strip().lower())
+        if match and match not in areas:
+            areas.append(match)
+    if not areas:
+        raise ValueError(f"LLM returned no known areas: {raw_areas!r}")
+
+    intent = parsed.get("intent")
+    metrics = parsed.get("metrics")
+    if isinstance(metrics, str):
+        metrics = [metrics]
+    metrics = [m for m in metrics if isinstance(m, str)] if isinstance(metrics, list) else []
+    return {
+        "areas": areas,
+        "intent": intent if isinstance(intent, str) and intent else "analysis",
+        "metrics": metrics or ["price", "demand"],
+    }
 
 
 def generate_llm_summary(df: pd.DataFrame, areas: List[str]) -> str:
@@ -205,11 +262,11 @@ def generate_llm_summary(df: pd.DataFrame, areas: List[str]) -> str:
     Generate a natural-language market summary via the LLM. Falls back to the
     deterministic mock summary if the client is unavailable or the call fails.
     """
-    client = get_openai_client()
-    if client is None:
-        return generate_mock_summary(df, areas)
-
     try:
+        client = get_openai_client()
+        if client is None:
+            return generate_mock_summary(df, areas)
+
         stats = []
         for area in areas:
             sub = df[df["area"].str.lower() == area.lower()]
@@ -238,6 +295,10 @@ def generate_llm_summary(df: pd.DataFrame, areas: List[str]) -> str:
                     "avg_demand": float(grouped["demand"].mean()),
                 }
             )
+
+        if not stats:
+            # Nothing numeric to ground the model on; don't let it invent figures.
+            return generate_mock_summary(df, areas)
 
         prompt = f"""
 You are a real estate market analyst. Based on the following data, provide a concise, professional analysis:
@@ -271,7 +332,11 @@ def generate_mock_summary(df: pd.DataFrame, areas: List[str]) -> str:
     if not areas:
         return "No area detected in query."
 
-    area = areas[0]
+    return " ".join(_summarize_area(df, area) for area in areas)
+
+
+def _summarize_area(df: pd.DataFrame, area: str) -> str:
+    """One-sentence price trend for a single area, guarded against bad data."""
     sub = df[df["area"].str.lower() == area.lower()]
     if sub.empty:
         return f"No data found for area: {area}"
@@ -298,19 +363,24 @@ def generate_mock_summary(df: pd.DataFrame, areas: List[str]) -> str:
     if first_price == 0 or np.isnan(first_price) or np.isnan(last_price):
         return f"Price data for {area} is incomplete for trend analysis."
 
+    lp = round(last_price)
+    if first_year == last_year:
+        return (
+            f"Analysis for {area}: Only {first_year} data is available. "
+            f"Average price: {lp}."
+        )
+
     pct_change = ((last_price - first_price) / first_price) * 100
+    pc = round(abs(pct_change), 1)
     if pct_change > 0:
-        trend = "increased"
+        trend = f"increased by {pc}%"
     elif pct_change < 0:
-        trend = "decreased"
+        trend = f"decreased by {pc}%"
     else:
         trend = "remained stable"
 
-    pc = round(abs(pct_change), 1)
-    lp = round(last_price)
-
     return (
-        f"Analysis for {area}: Prices have {trend} by {pc}% "
+        f"Analysis for {area}: Prices have {trend} "
         f"from {first_year} to {last_year}. "
         f"Latest average price: {lp}."
     )

@@ -1,5 +1,13 @@
 export default function DataTable({ rows, onDownload }) {
-  if (!rows || rows.length === 0) return null;
+  if (!rows || rows.length === 0) {
+    return (
+      <div className="card mt-4 shadow-sm data-table-card">
+        <div className="card-body">
+          <p className="table-info mb-0">No rows match this query.</p>
+        </div>
+      </div>
+    );
+  }
 
   const columns = Object.keys(rows[0]);
 

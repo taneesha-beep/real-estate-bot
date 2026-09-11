@@ -52,7 +52,7 @@ export default function ChatInput({ onSubmit, loading }) {
           <input
             type="file"
             className="form-control"
-            accept=".xlsx,.xls"
+            accept=".xlsx"
             onChange={handleFileChange}
             disabled={loading}
             id="file-upload"

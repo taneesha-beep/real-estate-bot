@@ -9,13 +9,30 @@ import {
   ResponsiveContainer
 } from "recharts";
 
-const COLORS = ['#899878', '#222725', '#e4e6c3', '#121113', '#f7f7f2'];
+// Earthy series colors in a fixed order; each is >= 3:1 on the white card and
+// adjacent pairs stay distinguishable with common color-vision deficiencies.
+const COLORS = ['#5f8a2c', '#2f78a8', '#c4572a', '#8e4a9a', '#b88a00'];
 
 export default function TrendChart({ title, data }) {
   if (!data) return null;
 
-  const labels = data.labels;
-  const datasets = data.datasets;
+  const labels = data.labels ?? [];
+  const datasets = data.datasets ?? [];
+  // Missing years arrive as null and are drawn as gaps; an all-null chart is empty.
+  const hasValues = datasets.some((ds) => ds.values.some((v) => v != null));
+
+  if (!hasValues) {
+    return (
+      <div className="card mt-4 shadow-sm chart-card">
+        <div className="card-body">
+          <div className="chart-header">
+            <h5 className="card-title">{title}</h5>
+          </div>
+          <p className="table-info mb-0">No data available to chart for this query.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Convert to Recharts format
   const chartData = labels.map((year, i) => {

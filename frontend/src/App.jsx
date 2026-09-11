@@ -3,23 +3,27 @@ import ChatInput from "./components/ChatInput";
 import ResponseCard from "./components/ResponseCard";
 import TrendChart from "./components/TrendChart";
 import DataTable from "./components/DataTable";
-import { analyzeQuery, downloadData } from "./api/analyze";
+import { analyzeQuery, downloadData, describeError } from "./api/analyze";
 
 function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
   const [currentQuery, setCurrentQuery] = useState("");
   const [currentFile, setCurrentFile] = useState(null);
 
   const handleAnalyze = async (query, file) => {
     setLoading(true);
+    // Clear the previous answer so it can't be mistaken for this query's.
+    setResult(null);
+    setError(null);
     setCurrentQuery(query);
     setCurrentFile(file);
     try {
       const data = await analyzeQuery(query, file);
       setResult(data);
     } catch (err) {
-      alert("Error: " + err.message);
+      setError(await describeError(err));
     }
     setLoading(false);
   };
@@ -28,7 +32,8 @@ function App() {
     try {
       await downloadData(currentQuery, currentFile, format);
     } catch (err) {
-      alert("Download Error: " + err.message);
+      const { message } = await describeError(err);
+      alert("Download Error: " + message);
     }
   };
 
@@ -51,6 +56,23 @@ function App() {
           <div className="loading-container">
             <div className="spinner"></div>
             <p className="loading-text">Analyzing real estate data...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="alert alert-danger mt-4" role="alert">
+            <strong>{error.message}</strong>
+            {error.availableAreas?.length > 0 && (
+              <p className="mb-0 mt-2">
+                Available areas: {error.availableAreas.join(", ")}
+              </p>
+            )}
+            {error.missingColumns?.length > 0 && (
+              <p className="mb-0 mt-2">
+                Missing columns: {error.missingColumns.join(", ")}
+              </p>
+            )}
           </div>
         )}
 
@@ -83,7 +105,7 @@ function App() {
 
         {/* Footer */}
         <footer className="app-footer">
-          <p>Powered by OpenAI • Built with React & Django • By Taneesha Badhe</p>
+          <p>Built with React & Django • OpenAI optional • By Taneesha Badhe</p>
         </footer>
       </div>
     </div>

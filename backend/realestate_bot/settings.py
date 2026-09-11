@@ -1,17 +1,31 @@
 import os
+import warnings
 from pathlib import Path
+from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 load_dotenv()
 
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
+
+def env_list(name, default):
+    """Read a comma-separated env var, ignoring spaces and empty items."""
+    return [item.strip() for item in os.environ.get(name, default).split(',') if item.strip()]
+
+
+CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', 'http://localhost:5173')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    # Without a key every request fails, so fall back to a random per-process
+    # key (never a hardcoded one). The "django-insecure-" prefix keeps
+    # `manage.py check --deploy` flagging it: set SECRET_KEY in production.
+    SECRET_KEY = 'django-insecure-' + get_random_secret_key()
+    warnings.warn('SECRET_KEY is not set; using a random key for this process.')
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -26,11 +40,13 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # First, so CORS headers are added even to responses that later
+    # middleware (e.g. CommonMiddleware redirects) returns early.
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",

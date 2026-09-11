@@ -8,7 +8,7 @@ export default function ResponseCard({ summary, areas }) {
           <div className="icon-wrapper">
             <span className="card-icon">📊</span>
           </div>
-          <h5 className="card-title">AI-Generated Analysis</h5>
+          <h5 className="card-title">Analysis Summary</h5>
         </div>
         
         <div className="summary-content">
